@@ -13,9 +13,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Run update script
+      - name: Generate article with ChatGPT
         run: |
-          echo "<h1>自動更新テスト</h1>" > index.html
+          RESPONSE=$(curl https://api.openai.com/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -d '{
+              "model": "gpt-4o-mini",
+              "messages": [
+                {"role": "system", "content": "あなたはブログ記事を書くAIです。"},
+                {"role": "user", "content": "今日のおすすめ記事を日本語で500文字程度で書いてください。"}
+              ]
+            }' | jq -r '.choices[0].message.content')
+
+          echo "<html><body><h1>今日の記事</h1><p>$RESPONSE</p></body></html>" > index.html
 
       - name: Commit changes
         run: |
