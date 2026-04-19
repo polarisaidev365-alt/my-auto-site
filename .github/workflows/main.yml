@@ -1,0 +1,30 @@
+name: Daily Update
+
+on:
+  schedule:
+    - cron: "0 0 * * *"  # 毎日9:00 JST に実行（UTC 0:00）
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Run update script
+        run: |
+          echo "<h1>自動更新テスト</h1>" > index.html
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+          git add index.html
+          git commit -m "Auto update" || echo "No changes to commit"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
