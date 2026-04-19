@@ -18,15 +18,26 @@ jobs:
 
       - name: Generate article with ChatGPT
         run: |
-          RESPONSE=$(curl https://api.openai.com/v1/responses \
+          echo "=== Sending request to OpenAI ==="
+
+          RAW_RESPONSE=$(curl -s https://api.openai.com/v1/responses \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $OPENAI_API_KEY" \
             -d '{
               "model": "gpt-4o-mini",
               "input": "今日のおすすめ記事を日本語で500文字で書いてください。"
-            }' | jq -r '.output_text')
+            }')
+
+          echo "=== RAW RESPONSE ==="
+          echo "$RAW_RESPONSE"
+
+          RESPONSE=$(echo "$RAW_RESPONSE" | jq -r '.output_text')
+
+          echo "=== PARSED RESPONSE ==="
+          echo "$RESPONSE"
 
           echo "<html><body><h1>今日の記事</h1><p>$RESPONSE</p></body></html>" > index.html
+
 
 
 
