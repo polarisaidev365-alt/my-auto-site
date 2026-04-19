@@ -29,6 +29,7 @@ jobs:
           echo "<html><body><h1>今日の記事</h1><p>$RESPONSE</p></body></html>" > index.html
 
 
+
       - name: Commit changes
         run: |
           git config --local user.email "actions@github.com"
