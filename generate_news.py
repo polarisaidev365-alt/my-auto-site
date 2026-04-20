@@ -30,10 +30,12 @@ prompt = """
 
 response = client.chat.completions.create(
     model="gpt-4o-mini",
+    response_format={"type": "json_object"},
     messages=[{"role": "user", "content": prompt}]
 )
 
-data = json.loads(response.choices[0].message.content)
+# 返答は必ず JSON になる
+data = response.choices[0].message.parsed
 
 # HTMLテンプレート読み込み
 with open("template.html", "r", encoding="utf-8") as f:
