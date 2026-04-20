@@ -29,12 +29,11 @@ for entry in feed.entries:
     articles.append({
         "title": entry.title,
         "summary": entry.summary,
-        "source": entry.link,  # ← OpenAI に渡すキー名を source に統一
+        "source": entry.link,
         "published": published.strftime("%Y-%m-%d")
     })
 
 articles = articles[:50]
-
 
 # -----------------------------
 # 2. OpenAI に要約させる（400文字要点＋JSON壊れ防止）
@@ -48,7 +47,7 @@ summary の条件：
 - 詳細ニュース：400文字以内で要点をまとめる
 
 image_keyword の条件：
-- 必ず英単語1〜2語（例：ai, robotics, machine learning）
+- 必ず英単語1〜2語（例：ai, robotics）
 - 日本語は禁止
 
 JSON形式：
@@ -97,13 +96,17 @@ response = client.chat.completions.create(
 
 raw = response.choices[0].message.content.strip()
 
+# ★★★ OpenAI の返答を必ずログに出す（これが重要） ★★★
+print("=== OPENAI RAW RESPONSE START ===")
+print(raw)
+print("=== OPENAI RAW RESPONSE END ===")
+
 # JSON抽出
 start = raw.find("{")
 end = raw.rfind("}") + 1
 json_str = raw[start:end]
 
 data = json.loads(json_str)
-
 
 # -----------------------------
 # 2.5 JSON の壊れを修復
@@ -122,7 +125,6 @@ def sanitize_keyword(k):
 data["topics"] = ensure_list(data.get("topics", []))
 data["details"] = ensure_list(data.get("details", []))
 
-# 件数補完
 while len(data["topics"]) < 5:
     data["topics"].append({
         "title": "追加トピック",
@@ -140,11 +142,9 @@ while len(data["details"]) < 20:
         "published": today.strftime("%Y-%m-%d")
     })
 
-# image_keyword を強制的に英単語にする
 data["main_topic"]["image_keyword"] = sanitize_keyword(data["main_topic"].get("image_keyword", "ai"))
 for t in data["topics"]:
     t["image_keyword"] = sanitize_keyword(t.get("image_keyword", "ai"))
-
 
 # -----------------------------
 # 3. HTML 生成
@@ -155,13 +155,11 @@ def safe_image(keyword):
 with open("template.html", "r", encoding="utf-8") as f:
     html = f.read()
 
-# メイントピック
 main = data["main_topic"]
 html = html.replace("{{MAIN_IMAGE}}", safe_image(main["image_keyword"]))
 html = html.replace("{{MAIN_TITLE}}", main["title"])
 html = html.replace("{{MAIN_SUMMARY}}", main["summary"])
 
-# 主要ニュース（画像＋出典＋公開日）
 cards = ""
 for t in data["topics"][:5]:
     cards += f"""
@@ -180,7 +178,6 @@ for t in data["topics"][:5]:
 
 html = html.replace("{{NEWS_CARDS}}", cards)
 
-# 詳細ニュース（400文字要点＋表形式）
 details_html = ""
 for d in data["details"][:20]:
     summary_400 = d["summary"][:400]
@@ -195,7 +192,6 @@ for d in data["details"][:20]:
 
 html = html.replace("{{DETAILS_LIST}}", details_html)
 
-# 出力
 os.makedirs("public", exist_ok=True)
 with open("public/index.html", "w", encoding="utf-8") as f:
     f.write(html)
