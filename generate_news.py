@@ -19,13 +19,11 @@ yesterday = today - timedelta(days=1)
 articles = []
 
 for entry in feed.entries:
-    # pubDate を datetime に変換
     try:
         published = datetime(*entry.published_parsed[:6])
     except:
         continue
 
-    # 今日〜昨日のニュースだけ採用
     if published < yesterday:
         continue
 
@@ -36,8 +34,7 @@ for entry in feed.entries:
         "published": published.strftime("%Y-%m-%d"),
     })
 
-# ニュースが少ない場合の保険
-articles = articles[:30]  # 最大30件取得
+articles = articles[:30]  # 最大30件
 
 
 # -----------------------------
@@ -49,30 +46,27 @@ prompt = """
 
 すべての文章（title, summary）は自然な日本語で書いてください。
 
-入力として、今日のAIニュース記事を渡します。
-これをもとに、以下のJSONを生成してください：
-
 {
-  "main_topic": {{
+  "main_topic": {
     "title": "",
     "summary": "",
     "image_keyword": ""
-  }},
+  },
   "topics": [
-    {{
+    {
       "title": "",
       "summary": "",
       "image_keyword": ""
-    }}
+    }
   ],
   "details": [
-    {{
+    {
       "title": "",
       "summary": "",
       "image_keyword": "",
       "source": "",
       "published": ""
-    }}
+    }
   ]
 }
 
@@ -86,8 +80,9 @@ prompt = """
 
 以下が今日のニュース一覧です：
 
-{json.dumps(articles, ensure_ascii=False)}
 """
+
+prompt += json.dumps(articles, ensure_ascii=False)
 
 response = client.chat.completions.create(
     model="gpt-4o-mini",
@@ -96,7 +91,6 @@ response = client.chat.completions.create(
 
 raw = response.choices[0].message.content.strip()
 
-# JSON抽出
 start = raw.find("{")
 end = raw.rfind("}") + 1
 json_str = raw[start:end]
@@ -119,3 +113,40 @@ html = html.replace("{{MAIN_IMAGE}}", safe_image(main_kw))
 html = html.replace("{{MAIN_TITLE}}", data["main_topic"]["title"])
 html = html.replace("{{MAIN_SUMMARY}}", data["main_topic"]["summary"])
 
+# 主要トピック
+cards = ""
+for t in data["topics"][:5]:
+    img = safe_image(t["image_keyword"])
+    cards += f"""
+    <div class="news-card">
+      <img src="{img}" />
+      <div class="news-card-content">
+        <h3>{t['title']}</h3>
+        <p>{t['summary']}</p>
+      </div>
+    </div>
+    """
+html = html.replace("{{NEWS_CARDS}}", cards)
+
+# 詳細ニュース20件
+details_html = ""
+for d in data["details"][:20]:
+    img = safe_image(d["image_keyword"])
+    details_html += f"""
+    <div class="detail-item">
+      <img src="{img}" />
+      <div class="detail-content">
+        <h3>{d['title']}</h3>
+        <p>{d['summary']}</p>
+        <div class="detail-meta">
+          出典: <a href="{d['source']}" target="_blank">{d['source']}</a> / 公開日: {d['published']}
+        </div>
+      </div>
+    </div>
+    """
+html = html.replace("{{DETAILS_LIST}}", details_html)
+
+# 出力
+os.makedirs("public", exist_ok=True)
+with open("public/index.html", "w", encoding="utf-8") as f:
+    f.write(html)
