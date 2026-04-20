@@ -5,9 +5,8 @@ from openai import OpenAI
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 prompt = """
-世界の今日のAIニュースを5つの主要トピックに整理してまとめてください。
-
-出力は必ず以下のJSON形式で返してください：
+あなたは厳密なJSON生成AIです。
+以下の形式のJSON「のみ」を返してください。説明文や前置きは禁止です。
 
 {
   "main_topic": {
@@ -24,18 +23,24 @@ prompt = """
   ]
 }
 
-各トピックには必ず画像URLを1つ含めてください。
-画像URLは著作権的に安全なフリー画像（Unsplashなど）を使用してください。
+タスク：
+世界の今日のAIニュースを5つの主要トピックに整理してまとめてください。
+各トピックには必ず著作権的に安全な画像URL（Unsplashなど）を1つ含めてください。
 """
 
 response = client.chat.completions.create(
     model="gpt-4o-mini",
-    response_format={"type": "json_object"},
     messages=[{"role": "user", "content": prompt}]
 )
 
-# 返答は必ず JSON になる
-data = response.choices[0].message.parsed
+raw = response.choices[0].message.content.strip()
+
+# JSON以外の文字が混ざる可能性があるため、最初の { から最後の } までを抽出
+start = raw.find("{")
+end = raw.rfind("}") + 1
+json_str = raw[start:end]
+
+data = json.loads(json_str)
 
 # HTMLテンプレート読み込み
 with open("template.html", "r", encoding="utf-8") as f:
