@@ -7,13 +7,13 @@ from openai import OpenAI
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # -----------------------------
-# 1. Bing News RSS から今日のニュース取得
+# 1. Bing News RSS から「今週のAIニュース」を取得
 # -----------------------------
 RSS_URL = "https://www.bing.com/news/search?q=AI&format=rss"
 feed = feedparser.parse(RSS_URL)
 
 today = datetime.utcnow()
-yesterday = today - timedelta(days=1)
+one_week_ago = today - timedelta(days=7)
 
 articles = []
 for entry in feed.entries:
@@ -22,7 +22,7 @@ for entry in feed.entries:
     except:
         continue
 
-    if published < yesterday:
+    if published < one_week_ago:
         continue
 
     articles.append({
@@ -32,7 +32,7 @@ for entry in feed.entries:
         "published": published.strftime("%Y-%m-%d")
     })
 
-articles = articles[:30]  # 最大30件
+articles = articles[:50]  # 今週は件数が多いので最大50件に拡大
 
 
 # -----------------------------
@@ -70,16 +70,16 @@ JSON形式：
 }
 
 条件：
-- main_topic は最重要ニュース1件
-- topics は主要ニュース5件
-- details は詳細ニュース20件
+- main_topic は今週の最重要ニュース1件
+- topics は今週の主要ニュース5件
+- details は今週の詳細ニュース20件
 - image_keyword は英単語（ai, robotics など）
 - source は記事のリンク
 - published は YYYY-MM-DD 形式
 - 必ず JSON のみを返す
 """
 
-prompt += "\n\n今日のニュース一覧：\n"
+prompt += "\n\n今週のニュース一覧：\n"
 prompt += json.dumps(articles, ensure_ascii=False)
 
 response = client.chat.completions.create(
@@ -97,18 +97,14 @@ json_str = raw[start:end]
 data = json.loads(json_str)
 
 # -----------------------------
-# 2.5 JSON の壊れを修復
+# 2.5 JSON の壊れを修復（topics / details を必ず配列化）
 # -----------------------------
-
-# topics が list でない場合 → list に変換
 if isinstance(data.get("topics"), dict):
     data["topics"] = [data["topics"]]
 
-# details が list でない場合 → list に変換
 if isinstance(data.get("details"), dict):
     data["details"] = [data["details"]]
 
-# topics が 5 件未満なら補完
 while len(data["topics"]) < 5:
     data["topics"].append({
         "title": "追加トピック",
@@ -116,7 +112,6 @@ while len(data["topics"]) < 5:
         "image_keyword": "ai"
     })
 
-# details が 20 件未満なら補完
 while len(data["details"]) < 20:
     data["details"].append({
         "title": "追加詳細ニュース",
