@@ -12,20 +12,23 @@ prompt = """
   "main_topic": {
     "title": "",
     "summary": "",
-    "image_url": ""
+    "image_keyword": ""
   },
   "topics": [
     {
       "title": "",
       "summary": "",
-      "image_url": ""
+      "image_keyword": ""
     }
   ]
 }
 
 タスク：
 世界の今日のAIニュースを5つの主要トピックに整理してまとめてください。
-各トピックには必ず著作権的に安全な画像URL（Unsplashなど）を1つ含めてください。
+
+各トピックには必ず画像キーワードを1つ含めてください。
+画像キーワードは英単語で、ニュース内容に関連する単語にしてください。
+例：ai, robotics, machine-learning, neural-network
 """
 
 response = client.chat.completions.create(
@@ -35,28 +38,35 @@ response = client.chat.completions.create(
 
 raw = response.choices[0].message.content.strip()
 
-# JSON以外の文字が混ざる可能性があるため、最初の { から最後の } までを抽出
+# JSON抽出（{ 〜 } の範囲を取り出す）
 start = raw.find("{")
 end = raw.rfind("}") + 1
 json_str = raw[start:end]
 
 data = json.loads(json_str)
 
+# 画像URLを安定生成する関数
+def safe_image(keyword):
+    return f"https://source.unsplash.com/featured/?{keyword}"
+
 # HTMLテンプレート読み込み
 with open("template.html", "r", encoding="utf-8") as f:
     html = f.read()
 
 # メイントピック埋め込み
-html = html.replace("{{MAIN_IMAGE}}", data["main_topic"]["image_url"])
+main_kw = data["main_topic"]["image_keyword"]
+html = html.replace("{{MAIN_IMAGE}}", safe_image(main_kw))
 html = html.replace("{{MAIN_TITLE}}", data["main_topic"]["title"])
 html = html.replace("{{MAIN_SUMMARY}}", data["main_topic"]["summary"])
 
 # ニュースカード生成
 cards = ""
 for t in data["topics"]:
+    kw = t["image_keyword"]
+    img = safe_image(kw)
     card = f"""
     <div class="news-card">
-      <img src="{t['image_url']}" />
+      <img src="{img}" />
       <div class="news-card-content">
         <h3>{t['title']}</h3>
         <p>{t['summary']}</p>
