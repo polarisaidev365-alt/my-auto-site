@@ -36,7 +36,7 @@ articles = articles[:30]  # 最大30件
 
 
 # -----------------------------
-# 2. OpenAI に要約させる（JSON壊れ防止版）
+# 2. OpenAI に要約させる（JSON壊れ防止）
 # -----------------------------
 prompt = """
 あなたは厳密なJSON生成AIです。
@@ -84,11 +84,17 @@ prompt += json.dumps(articles, ensure_ascii=False)
 
 response = client.chat.completions.create(
     model="gpt-4o-mini",
-    messages=[{"role": "user", "content": prompt}],
-    response_format={"type": "json_object"}  # ← JSON壊れ防止の最重要ポイント
+    messages=[{"role": "user", "content": prompt}]
 )
 
-data = response.choices[0].message.parsed
+raw = response.choices[0].message.content.strip()
+
+# JSON抽出（最初の { から最後の } まで）
+start = raw.find("{")
+end = raw.rfind("}") + 1
+json_str = raw[start:end]
+
+data = json.loads(json_str)
 
 
 # -----------------------------
