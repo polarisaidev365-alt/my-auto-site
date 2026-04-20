@@ -7,6 +7,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 prompt = """
 あなたは厳密なJSON生成AIです。
 以下の形式のJSON「のみ」を返してください。説明文や前置きは禁止です。
+すべての文章（title, summary, source, published）は必ず日本語で書いてください。
 
 {
   "main_topic": {
@@ -34,8 +35,9 @@ prompt = """
 
 タスク：
 1. 世界の今日のAIニュースを5つの主要トピックに整理してまとめてください。
-2. さらに、AIに関する詳細ニュースを20件生成してください。
+2. 世界の今日のAIニュースのうち主要なニュース20件を整理し、各400文字で内容がしっかりわかるようにポイントを書いて
 3. 画像キーワードは英単語で、ニュース内容に関連する単語にしてください。
+4. すべて日本語で書いて
 """
 
 response = client.chat.completions.create(
