@@ -3,6 +3,7 @@ import json
 import feedparser
 from datetime import datetime, timedelta
 from openai import OpenAI
+import re
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -28,25 +29,27 @@ for entry in feed.entries:
     articles.append({
         "title": entry.title,
         "summary": entry.summary,
-        "link": entry.link,
+        "source": entry.link,  # ← OpenAI に渡すキー名を source に統一
         "published": published.strftime("%Y-%m-%d")
     })
 
-articles = articles[:50]  # 今週は件数が多いので最大50件
+articles = articles[:50]
 
 
 # -----------------------------
-# 2. OpenAI に要約させる（300文字要点＋JSON壊れ防止）
+# 2. OpenAI に要約させる（400文字要点＋JSON壊れ防止）
 # -----------------------------
 prompt = """
 あなたは厳密なJSON生成AIです。
 以下の形式のJSON「のみ」を返してください。説明文や前置きは禁止です。
 
-すべての文章（title, summary）は自然な日本語で書いてください。
-
 summary の条件：
 - 主要ニュース：自然な要約
-- 詳細ニュース：300文字以内で要点をまとめる
+- 詳細ニュース：400文字以内で要点をまとめる
+
+image_keyword の条件：
+- 必ず英単語1〜2語（例：ai, robotics, machine learning）
+- 日本語は禁止
 
 JSON形式：
 {
@@ -80,8 +83,7 @@ JSON形式：
 - main_topic は今週の最重要ニュース1件
 - topics は今週の主要ニュース5件
 - details は今週の詳細ニュース20件
-- image_keyword は英単語（ai, robotics など）
-- summary は300文字以内（details）
+- summary は400文字以内（details）
 - 必ず JSON のみを返す
 """
 
@@ -102,11 +104,20 @@ json_str = raw[start:end]
 
 data = json.loads(json_str)
 
+
 # -----------------------------
-# 2.5 JSON の壊れを修復（topics / details を必ず配列化）
+# 2.5 JSON の壊れを修復
 # -----------------------------
-def ensure_list(value):
-    return value if isinstance(value, list) else [value]
+def ensure_list(v):
+    return v if isinstance(v, list) else [v]
+
+def sanitize_keyword(k):
+    if not k:
+        return "ai"
+    k = re.sub(r"[^a-zA-Z ]", "", k)
+    if len(k.strip()) == 0:
+        return "ai"
+    return k.strip()
 
 data["topics"] = ensure_list(data.get("topics", []))
 data["details"] = ensure_list(data.get("details", []))
@@ -124,18 +135,21 @@ while len(data["topics"]) < 5:
 while len(data["details"]) < 20:
     data["details"].append({
         "title": "追加詳細ニュース",
-        "summary": "AI関連の補完ニュースです。（300文字要点）",
+        "summary": "AI関連の補完ニュースです。（400文字要点）",
         "source": "",
         "published": today.strftime("%Y-%m-%d")
     })
+
+# image_keyword を強制的に英単語にする
+data["main_topic"]["image_keyword"] = sanitize_keyword(data["main_topic"].get("image_keyword", "ai"))
+for t in data["topics"]:
+    t["image_keyword"] = sanitize_keyword(t.get("image_keyword", "ai"))
 
 
 # -----------------------------
 # 3. HTML 生成
 # -----------------------------
 def safe_image(keyword):
-    if not keyword:
-        keyword = "ai"
     return f"https://source.unsplash.com/featured/?{keyword}"
 
 with open("template.html", "r", encoding="utf-8") as f:
@@ -143,16 +157,16 @@ with open("template.html", "r", encoding="utf-8") as f:
 
 # メイントピック
 main = data["main_topic"]
-html = html.replace("{{MAIN_IMAGE}}", safe_image(main.get("image_keyword", "ai")))
+html = html.replace("{{MAIN_IMAGE}}", safe_image(main["image_keyword"]))
 html = html.replace("{{MAIN_TITLE}}", main["title"])
 html = html.replace("{{MAIN_SUMMARY}}", main["summary"])
 
-# 主要5件（画像＋出典＋公開日）
+# 主要ニュース（画像＋出典＋公開日）
 cards = ""
 for t in data["topics"][:5]:
     cards += f"""
     <div class="news-card">
-      <img src="{safe_image(t.get('image_keyword', 'ai'))}" />
+      <img src="{safe_image(t['image_keyword'])}" />
       <div class="news-card-content">
         <h3>{t['title']}</h3>
         <p>{t['summary']}</p>
@@ -166,14 +180,14 @@ for t in data["topics"][:5]:
 
 html = html.replace("{{NEWS_CARDS}}", cards)
 
-# 詳細20件（表形式）
+# 詳細ニュース（400文字要点＋表形式）
 details_html = ""
 for d in data["details"][:20]:
-    summary_300 = d["summary"][:300]
+    summary_400 = d["summary"][:400]
     details_html += f"""
     <tr>
       <td>{d['title']}</td>
-      <td>{summary_300}</td>
+      <td>{summary_400}</td>
       <td><a href="{d['source']}" target="_blank">{d['source']}</a></td>
       <td>{d['published']}</td>
     </tr>
