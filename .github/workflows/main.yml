@@ -2,7 +2,7 @@ name: Daily AI HTML with Image
 
 on:
   schedule:
-    - cron: '0 15 * * *'  # JST 0:00 ごろ（UTC 15:00）
+    - cron: '0 15 * * *'
   workflow_dispatch:
 
 permissions:
@@ -13,14 +13,15 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Generate index.html by AI
+      - name: Generate index.html
         run: |
           mkdir -p public
-          cat > public/index.html << 'EOF'
+          cat << 'EOF' > public/index.html
           <!DOCTYPE html>
           <html lang="ja">
           <head>
@@ -30,10 +31,10 @@ jobs:
           </head>
           <body>
             <h1>AI がまとめた今日のトピック</h1>
-            <img src="https://example.com/sample.jpg" alt="今日のイメージ" style="max-width:100%;height:auto;" />
+            <img src="https://example.com/sample.jpg" style="max-width:100%;height:auto;" />
             <section>
               <h2>サマリー</h2>
-              <p>ここに AI が生成した要約テキストを入れる（後で OpenAI API 連携に差し替え）。</p>
+              <p>ここに AI が生成した要約テキストを入れる。</p>
             </section>
           </body>
           </html>
