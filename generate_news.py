@@ -7,17 +7,15 @@ from openai import OpenAI
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # -----------------------------
-# 1. Bing News RSS から本物の今日のニュースを取得
+# 1. Bing News RSS から今日のニュース取得
 # -----------------------------
 RSS_URL = "https://www.bing.com/news/search?q=AI&format=rss"
-
 feed = feedparser.parse(RSS_URL)
 
 today = datetime.utcnow()
 yesterday = today - timedelta(days=1)
 
 articles = []
-
 for entry in feed.entries:
     try:
         published = datetime(*entry.published_parsed[:6])
@@ -31,14 +29,14 @@ for entry in feed.entries:
         "title": entry.title,
         "summary": entry.summary,
         "link": entry.link,
-        "published": published.strftime("%Y-%m-%d"),
+        "published": published.strftime("%Y-%m-%d")
     })
 
 articles = articles[:30]  # 最大30件
 
 
 # -----------------------------
-# 2. OpenAI に要約させる
+# 2. OpenAI に要約させる（JSON壊れ防止版）
 # -----------------------------
 prompt = """
 あなたは厳密なJSON生成AIです。
@@ -46,6 +44,7 @@ prompt = """
 
 すべての文章（title, summary）は自然な日本語で書いてください。
 
+JSON形式：
 {
   "main_topic": {
     "title": "",
@@ -71,31 +70,25 @@ prompt = """
 }
 
 条件：
-1. main_topic は最も重要なニュース1件
-2. topics は主要ニュース5件
-3. details は詳細ニュース20件
-4. image_keyword は英単語（ai, robotics など）
-5. source は記事のリンク
-6. published は YYYY-MM-DD 形式
-
-以下が今日のニュース一覧です：
-
+- main_topic は最重要ニュース1件
+- topics は主要ニュース5件
+- details は詳細ニュース20件
+- image_keyword は英単語（ai, robotics など）
+- source は記事のリンク
+- published は YYYY-MM-DD 形式
+- 必ず JSON のみを返す
 """
 
+prompt += "\n\n今日のニュース一覧：\n"
 prompt += json.dumps(articles, ensure_ascii=False)
 
 response = client.chat.completions.create(
     model="gpt-4o-mini",
-    messages=[{"role": "user", "content": prompt}]
+    messages=[{"role": "user", "content": prompt}],
+    response_format={"type": "json_object"}  # ← JSON壊れ防止の最重要ポイント
 )
 
-raw = response.choices[0].message.content.strip()
-
-start = raw.find("{")
-end = raw.rfind("}") + 1
-json_str = raw[start:end]
-
-data = json.loads(json_str)
+data = response.choices[0].message.parsed
 
 
 # -----------------------------
@@ -108,18 +101,17 @@ with open("template.html", "r", encoding="utf-8") as f:
     html = f.read()
 
 # メイントピック
-main_kw = data["main_topic"]["image_keyword"]
-html = html.replace("{{MAIN_IMAGE}}", safe_image(main_kw))
-html = html.replace("{{MAIN_TITLE}}", data["main_topic"]["title"])
-html = html.replace("{{MAIN_SUMMARY}}", data["main_topic"]["summary"])
+main = data["main_topic"]
+html = html.replace("{{MAIN_IMAGE}}", safe_image(main["image_keyword"]))
+html = html.replace("{{MAIN_TITLE}}", main["title"])
+html = html.replace("{{MAIN_SUMMARY}}", main["summary"])
 
-# 主要トピック
+# 主要5件
 cards = ""
 for t in data["topics"][:5]:
-    img = safe_image(t["image_keyword"])
     cards += f"""
     <div class="news-card">
-      <img src="{img}" />
+      <img src="{safe_image(t['image_keyword'])}" />
       <div class="news-card-content">
         <h3>{t['title']}</h3>
         <p>{t['summary']}</p>
@@ -128,13 +120,12 @@ for t in data["topics"][:5]:
     """
 html = html.replace("{{NEWS_CARDS}}", cards)
 
-# 詳細ニュース20件
+# 詳細20件
 details_html = ""
 for d in data["details"][:20]:
-    img = safe_image(d["image_keyword"])
     details_html += f"""
     <div class="detail-item">
-      <img src="{img}" />
+      <img src="{safe_image(d['image_keyword'])}" />
       <div class="detail-content">
         <h3>{d['title']}</h3>
         <p>{d['summary']}</p>
