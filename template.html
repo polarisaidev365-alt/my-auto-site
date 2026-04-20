@@ -91,9 +91,10 @@
       font-size: 1.2rem;
     }
 
-    .news-card-content p {
-      font-size: 0.95rem;
-      color: #555;
+    .news-meta {
+      font-size: 0.85rem;
+      color: #777;
+      margin-top: 8px;
     }
 
     footer {
@@ -102,6 +103,38 @@
       color: #777;
       font-size: 0.9rem;
       margin-top: 40px;
+    }
+
+    /* 詳細ニュース（表形式） */
+    .details-section {
+      max-width: 1100px;
+      margin: 60px auto;
+      padding: 0 20px;
+    }
+
+    table.details-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+    }
+
+    table.details-table th, table.details-table td {
+      padding: 14px;
+      border-bottom: 1px solid #eee;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    table.details-table th {
+      background: #f0f4f8;
+      font-weight: bold;
+    }
+
+    table.details-table tr:last-child td {
+      border-bottom: none;
     }
   </style>
 </head>
@@ -118,73 +151,32 @@
     <p>{{MAIN_SUMMARY}}</p>
   </section>
 
-  <!-- カテゴリ別ニュース -->
+  <!-- 主要ニュース -->
   <section class="category-section">
-    <h2 class="category-title">今日の主要AIトピック</h2>
+    <h2 class="category-title">今週の主要AIトピック</h2>
 
     <div class="news-grid">
-
       {{NEWS_CARDS}}
-
     </div>
+  </section>
+
+  <!-- 詳細ニュース（表形式） -->
+  <section class="details-section">
+    <h2 class="category-title">今週のAI詳細ニュース（20件）</h2>
+
+    <table class="details-table">
+      <tr>
+        <th>タイトル</th>
+        <th>要点（300文字）</th>
+        <th>出典</th>
+        <th>公開日</th>
+      </tr>
+      {{DETAILS_LIST}}
+    </table>
   </section>
 
   <footer>
     © 2026 AI News Daily
   </footer>
 </body>
-
-<section class="details-section">
-  <h2 class="category-title">AI 詳細ニュース（20件）</h2>
-
-  <div class="details-list">
-    {{DETAILS_LIST}}
-  </div>
-</section>
-
-<style>
-.details-section {
-  max-width: 1100px;
-  margin: 60px auto;
-  padding: 0 20px;
-}
-
-.details-list {
-  display: flex;
-  flex-direction: column;
-  gap: 25px;
-}
-
-.detail-item {
-  background: #fff;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.06);
-  display: flex;
-  gap: 20px;
-}
-
-.detail-item img {
-  width: 220px;
-  height: 140px;
-  object-fit: cover;
-  border-radius: 10px;
-}
-
-.detail-content h3 {
-  margin: 0 0 10px;
-  font-size: 1.3rem;
-}
-
-.detail-content p {
-  margin: 0 0 10px;
-  color: #555;
-}
-
-.detail-meta {
-  font-size: 0.85rem;
-  color: #777;
-}
-</style>
-
 </html>
