@@ -1,50 +1,51 @@
-name: Daily Update
+name: Daily AI HTML with Image
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: "0 0 * * *"
+    - cron: '0 15 * * *'  # JST 0:00 ごろ（UTC 15:00）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-
-    env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Install jq
-        run: sudo apt-get install -y jq
-
-      - name: Generate article with ChatGPT
+      - name: Generate index.html by AI
         run: |
-          echo "=== Sending request to OpenAI ==="
+          mkdir -p public
+          cat > public/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="ja">
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>AI Daily Summary</title>
+          </head>
+          <body>
+            <h1>AI がまとめた今日のトピック</h1>
+            <img src="https://example.com/sample.jpg" alt="今日のイメージ" style="max-width:100%;height:auto;" />
+            <section>
+              <h2>サマリー</h2>
+              <p>ここに AI が生成した要約テキストを入れる（後で OpenAI API 連携に差し替え）。</p>
+            </section>
+          </body>
+          </html>
+          EOF
 
-          RAW_RESPONSE=$(curl -s https://api.openai.com/v1/responses \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $OPENAI_API_KEY" \
-            -d '{
-              "model": "gpt-4o-mini",
-              "input": "今日のおすすめ記事を日本語で500文字で書いてください。"
-            }')
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
-          echo "=== RAW RESPONSE ==="
-          echo "$RAW_RESPONSE"
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
 
-          RESPONSE=$(echo "$RAW_RESPONSE" | jq -r '.output_text')
-
-          echo "=== PARSED RESPONSE ==="
-          echo "$RESPONSE"
-
-          echo "<html><body><h1>今日の記事</h1><p>$RESPONSE</p></body></html>" > index.html
-
-      - name: Commit and push changes
-        run: |
-          git config --local user.email "github-actions@example.com"
-          git config --local user.name "GitHub Actions"
-          git add index.html
-          git commit -m "Update article" || echo "No changes to commit"
-          git push
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
