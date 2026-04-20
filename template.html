@@ -44,4 +44,49 @@ table {
     border-collapse: collapse;
     background: white;
 }
-table
+table th, table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+}
+table th {
+    background: #eee;
+}
+</style>
+</head>
+<body>
+
+<header>
+    <h1>AI News Daily</h1>
+</header>
+
+<div class="container">
+
+    <h2>主要ニュース（5件）</h2>
+
+    <div class="main-topic">
+        <h3>{{MAIN_TITLE}}</h3>
+        <p>{{MAIN_SUMMARY}}</p>
+        <p class="news-meta">
+            出典: <a href="{{MAIN_SOURCE}}" target="_blank">{{MAIN_SOURCE}}</a><br>
+            公開日: {{MAIN_PUBLISHED}}
+        </p>
+    </div>
+
+    <h2>その他の主要ニュース</h2>
+    {{NEWS_CARDS}}
+
+    <h2>詳細ニュース（20件）</h2>
+    <table>
+        <tr>
+            <th>タイトル</th>
+            <th>要約（400文字）</th>
+            <th>出典</th>
+            <th>公開日</th>
+        </tr>
+        {{DETAILS_LIST}}
+    </table>
+
+</div>
+
+</body>
+</html>
