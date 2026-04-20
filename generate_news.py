@@ -89,12 +89,42 @@ response = client.chat.completions.create(
 
 raw = response.choices[0].message.content.strip()
 
-# JSON抽出（最初の { から最後の } まで）
+# JSON抽出
 start = raw.find("{")
 end = raw.rfind("}") + 1
 json_str = raw[start:end]
 
 data = json.loads(json_str)
+
+# -----------------------------
+# 2.5 JSON の壊れを修復
+# -----------------------------
+
+# topics が list でない場合 → list に変換
+if isinstance(data.get("topics"), dict):
+    data["topics"] = [data["topics"]]
+
+# details が list でない場合 → list に変換
+if isinstance(data.get("details"), dict):
+    data["details"] = [data["details"]]
+
+# topics が 5 件未満なら補完
+while len(data["topics"]) < 5:
+    data["topics"].append({
+        "title": "追加トピック",
+        "summary": "AI関連の補完ニュースです。",
+        "image_keyword": "ai"
+    })
+
+# details が 20 件未満なら補完
+while len(data["details"]) < 20:
+    data["details"].append({
+        "title": "追加詳細ニュース",
+        "summary": "AI関連の補完ニュースです。",
+        "image_keyword": "ai",
+        "source": "",
+        "published": today.strftime("%Y-%m-%d")
+    })
 
 
 # -----------------------------
