@@ -20,15 +20,22 @@ prompt = """
       "summary": "",
       "image_keyword": ""
     }
+  ],
+  "details": [
+    {
+      "title": "",
+      "summary": "",
+      "image_keyword": "",
+      "source": "",
+      "published": ""
+    }
   ]
 }
 
 タスク：
-世界の今日のAIニュースを5つの主要トピックに整理してまとめてください。
-
-各トピックには必ず画像キーワードを1つ含めてください。
-画像キーワードは英単語で、ニュース内容に関連する単語にしてください。
-例：ai, robotics, machine-learning, neural-network
+1. 世界の今日のAIニュースを5つの主要トピックに整理してまとめてください。
+2. さらに、AIに関する詳細ニュースを20件生成してください。
+3. 画像キーワードは英単語で、ニュース内容に関連する単語にしてください。
 """
 
 response = client.chat.completions.create(
@@ -38,7 +45,7 @@ response = client.chat.completions.create(
 
 raw = response.choices[0].message.content.strip()
 
-# JSON抽出（{ 〜 } の範囲を取り出す）
+# JSON抽出
 start = raw.find("{")
 end = raw.rfind("}") + 1
 json_str = raw[start:end]
@@ -59,7 +66,7 @@ html = html.replace("{{MAIN_IMAGE}}", safe_image(main_kw))
 html = html.replace("{{MAIN_TITLE}}", data["main_topic"]["title"])
 html = html.replace("{{MAIN_SUMMARY}}", data["main_topic"]["summary"])
 
-# ニュースカード生成
+# 主要トピックカード生成
 cards = ""
 for t in data["topics"]:
     kw = t["image_keyword"]
@@ -76,6 +83,27 @@ for t in data["topics"]:
     cards += card
 
 html = html.replace("{{NEWS_CARDS}}", cards)
+
+# 詳細ニュース20件生成
+details_html = ""
+for d in data["details"]:
+    kw = d["image_keyword"]
+    img = safe_image(kw)
+    block = f"""
+    <div class="detail-item">
+      <img src="{img}" />
+      <div class="detail-content">
+        <h3>{d['title']}</h3>
+        <p>{d['summary']}</p>
+        <div class="detail-meta">
+          出典: {d['source']} / 公開日: {d['published']}
+        </div>
+      </div>
+    </div>
+    """
+    details_html += block
+
+html = html.replace("{{DETAILS_LIST}}", details_html)
 
 # 出力
 os.makedirs("public", exist_ok=True)
