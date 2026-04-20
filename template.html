@@ -1,182 +1,47 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI News Daily</title>
-
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      margin: 0;
-      background: #f4f6f9;
-      color: #333;
-    }
-
-    header {
-      background: #1a1a1a;
-      color: #fff;
-      padding: 30px 20px;
-      text-align: center;
-    }
-
-    header h1 {
-      margin: 0;
-      font-size: 2.4rem;
-      letter-spacing: 1px;
-    }
-
-    .main-topic {
-      max-width: 1100px;
-      margin: 40px auto;
-      background: #fff;
-      padding: 25px;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    }
-
-    .main-topic img {
-      width: 100%;
-      border-radius: 12px;
-      margin-bottom: 20px;
-    }
-
-    .main-topic h2 {
-      font-size: 1.8rem;
-      margin-bottom: 10px;
-    }
-
-    .category-section {
-      max-width: 1100px;
-      margin: 40px auto;
-    }
-
-    .category-title {
-      font-size: 1.6rem;
-      border-left: 6px solid #4a90e2;
-      padding-left: 12px;
-      margin-bottom: 20px;
-    }
-
-    .news-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 25px;
-    }
-
-    .news-card {
-      background: #fff;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.06);
-      transition: transform 0.2s ease;
-    }
-
-    .news-card:hover {
-      transform: translateY(-4px);
-    }
-
-    .news-card img {
-      width: 100%;
-      height: 160px;
-      object-fit: cover;
-    }
-
-    .news-card-content {
-      padding: 15px;
-    }
-
-    .news-card-content h3 {
-      margin: 0 0 10px;
-      font-size: 1.2rem;
-    }
-
-    .news-meta {
-      font-size: 0.85rem;
-      color: #777;
-      margin-top: 8px;
-    }
-
-    footer {
-      text-align: center;
-      padding: 20px;
-      color: #777;
-      font-size: 0.9rem;
-      margin-top: 40px;
-    }
-
-    /* 詳細ニュース（表形式） */
-    .details-section {
-      max-width: 1100px;
-      margin: 60px auto;
-      padding: 0 20px;
-    }
-
-    table.details-table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #fff;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.06);
-    }
-
-    table.details-table th, table.details-table td {
-      padding: 14px;
-      border-bottom: 1px solid #eee;
-      text-align: left;
-      vertical-align: top;
-    }
-
-    table.details-table th {
-      background: #f0f4f8;
-      font-weight: bold;
-    }
-
-    table.details-table tr:last-child td {
-      border-bottom: none;
-    }
-  </style>
-</head>
-
-<body>
-  <header>
-    <h1>AI News Daily</h1>
-  </header>
-
-  <!-- 主要トピック -->
-  <section class="main-topic">
-    <img src="{{MAIN_IMAGE}}" alt="Main Topic Image" />
-    <h2>{{MAIN_TITLE}}</h2>
-    <p>{{MAIN_SUMMARY}}</p>
-  </section>
-
-  <!-- 主要ニュース -->
-  <section class="category-section">
-    <h2 class="category-title">今週の主要AIトピック</h2>
-
-    <div class="news-grid">
-      {{NEWS_CARDS}}
-    </div>
-  </section>
-
-  <!-- 詳細ニュース（表形式） -->
-  <section class="details-section">
-    <h2 class="category-title">今週のAI詳細ニュース（20件）</h2>
-
-    <table class="details-table">
-      <tr>
-        <th>タイトル</th>
-        <th>要点（300文字）</th>
-        <th>出典</th>
-        <th>公開日</th>
-      </tr>
-      {{DETAILS_LIST}}
-    </table>
-  </section>
-
-  <footer>
-    © 2026 AI News Daily
-  </footer>
-</body>
-</html>
+<meta charset="UTF-8">
+<title>AI News Daily</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #f5f5f5;
+}
+header {
+    background: #222;
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+.container {
+    width: 90%;
+    max-width: 1000px;
+    margin: 20px auto;
+}
+h2 {
+    border-left: 5px solid #333;
+    padding-left: 10px;
+}
+.news-card {
+    background: white;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.news-card h3 {
+    margin-top: 0;
+}
+.news-meta {
+    font-size: 12px;
+    color: #666;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+table
