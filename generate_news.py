@@ -32,11 +32,11 @@ for entry in feed.entries:
         "published": published.strftime("%Y-%m-%d")
     })
 
-articles = articles[:50]  # 今週は件数が多いので最大50件に拡大
+articles = articles[:50]  # 今週は件数が多いので最大50件
 
 
 # -----------------------------
-# 2. OpenAI に要約させる（JSON壊れ防止）
+# 2. OpenAI に要約させる（300文字要点＋JSON壊れ防止）
 # -----------------------------
 prompt = """
 あなたは厳密なJSON生成AIです。
@@ -44,25 +44,32 @@ prompt = """
 
 すべての文章（title, summary）は自然な日本語で書いてください。
 
+summary の条件：
+- 主要ニュース：自然な要約
+- 詳細ニュース：300文字以内で要点をまとめる
+
 JSON形式：
 {
   "main_topic": {
     "title": "",
     "summary": "",
-    "image_keyword": ""
+    "image_keyword": "",
+    "source": "",
+    "published": ""
   },
   "topics": [
     {
       "title": "",
       "summary": "",
-      "image_keyword": ""
+      "image_keyword": "",
+      "source": "",
+      "published": ""
     }
   ],
   "details": [
     {
       "title": "",
       "summary": "",
-      "image_keyword": "",
       "source": "",
       "published": ""
     }
@@ -74,8 +81,7 @@ JSON形式：
 - topics は今週の主要ニュース5件
 - details は今週の詳細ニュース20件
 - image_keyword は英単語（ai, robotics など）
-- source は記事のリンク
-- published は YYYY-MM-DD 形式
+- summary は300文字以内（details）
 - 必ず JSON のみを返す
 """
 
@@ -99,24 +105,26 @@ data = json.loads(json_str)
 # -----------------------------
 # 2.5 JSON の壊れを修復（topics / details を必ず配列化）
 # -----------------------------
-if isinstance(data.get("topics"), dict):
-    data["topics"] = [data["topics"]]
+def ensure_list(value):
+    return value if isinstance(value, list) else [value]
 
-if isinstance(data.get("details"), dict):
-    data["details"] = [data["details"]]
+data["topics"] = ensure_list(data.get("topics", []))
+data["details"] = ensure_list(data.get("details", []))
 
+# 件数補完
 while len(data["topics"]) < 5:
     data["topics"].append({
         "title": "追加トピック",
         "summary": "AI関連の補完ニュースです。",
-        "image_keyword": "ai"
+        "image_keyword": "ai",
+        "source": "",
+        "published": today.strftime("%Y-%m-%d")
     })
 
 while len(data["details"]) < 20:
     data["details"].append({
         "title": "追加詳細ニュース",
-        "summary": "AI関連の補完ニュースです。",
-        "image_keyword": "ai",
+        "summary": "AI関連の補完ニュースです。（300文字要点）",
         "source": "",
         "published": today.strftime("%Y-%m-%d")
     })
@@ -126,6 +134,8 @@ while len(data["details"]) < 20:
 # 3. HTML 生成
 # -----------------------------
 def safe_image(keyword):
+    if not keyword:
+        keyword = "ai"
     return f"https://source.unsplash.com/featured/?{keyword}"
 
 with open("template.html", "r", encoding="utf-8") as f:
@@ -133,39 +143,42 @@ with open("template.html", "r", encoding="utf-8") as f:
 
 # メイントピック
 main = data["main_topic"]
-html = html.replace("{{MAIN_IMAGE}}", safe_image(main["image_keyword"]))
+html = html.replace("{{MAIN_IMAGE}}", safe_image(main.get("image_keyword", "ai")))
 html = html.replace("{{MAIN_TITLE}}", main["title"])
 html = html.replace("{{MAIN_SUMMARY}}", main["summary"])
 
-# 主要5件
+# 主要5件（画像＋出典＋公開日）
 cards = ""
 for t in data["topics"][:5]:
     cards += f"""
     <div class="news-card">
-      <img src="{safe_image(t['image_keyword'])}" />
+      <img src="{safe_image(t.get('image_keyword', 'ai'))}" />
       <div class="news-card-content">
         <h3>{t['title']}</h3>
         <p>{t['summary']}</p>
-      </div>
-    </div>
-    """
-html = html.replace("{{NEWS_CARDS}}", cards)
-
-# 詳細20件
-details_html = ""
-for d in data["details"][:20]:
-    details_html += f"""
-    <div class="detail-item">
-      <img src="{safe_image(d['image_keyword'])}" />
-      <div class="detail-content">
-        <h3>{d['title']}</h3>
-        <p>{d['summary']}</p>
-        <div class="detail-meta">
-          出典: <a href="{d['source']}" target="_blank">{d['source']}</a> / 公開日: {d['published']}
+        <div class="news-meta">
+          出典: <a href="{t['source']}" target="_blank">{t['source']}</a><br>
+          公開日: {t['published']}
         </div>
       </div>
     </div>
     """
+
+html = html.replace("{{NEWS_CARDS}}", cards)
+
+# 詳細20件（表形式）
+details_html = ""
+for d in data["details"][:20]:
+    summary_300 = d["summary"][:300]
+    details_html += f"""
+    <tr>
+      <td>{d['title']}</td>
+      <td>{summary_300}</td>
+      <td><a href="{d['source']}" target="_blank">{d['source']}</a></td>
+      <td>{d['published']}</td>
+    </tr>
+    """
+
 html = html.replace("{{DETAILS_LIST}}", details_html)
 
 # 出力
