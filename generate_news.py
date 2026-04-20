@@ -1,43 +1,92 @@
 import os
 import json
+import feedparser
+from datetime import datetime, timedelta
 from openai import OpenAI
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-prompt = """
+# -----------------------------
+# 1. Bing News RSS から本物の今日のニュースを取得
+# -----------------------------
+RSS_URL = "https://www.bing.com/news/search?q=AI&format=rss"
+
+feed = feedparser.parse(RSS_URL)
+
+today = datetime.utcnow()
+yesterday = today - timedelta(days=1)
+
+articles = []
+
+for entry in feed.entries:
+    # pubDate を datetime に変換
+    try:
+        published = datetime(*entry.published_parsed[:6])
+    except:
+        continue
+
+    # 今日〜昨日のニュースだけ採用
+    if published < yesterday:
+        continue
+
+    articles.append({
+        "title": entry.title,
+        "summary": entry.summary,
+        "link": entry.link,
+        "published": published.strftime("%Y-%m-%d"),
+    })
+
+# ニュースが少ない場合の保険
+articles = articles[:30]  # 最大30件取得
+
+
+# -----------------------------
+# 2. OpenAI に要約させる
+# -----------------------------
+prompt = f"""
 あなたは厳密なJSON生成AIです。
 以下の形式のJSON「のみ」を返してください。説明文や前置きは禁止です。
-すべての文章（title, summary, source, published）は必ず日本語で書いてください。
+
+すべての文章（title, summary）は自然な日本語で書いてください。
+
+入力として、今日のAIニュース記事を渡します。
+これをもとに、以下のJSONを生成してください：
 
 {
-  "main_topic": {
+  "main_topic": {{
     "title": "",
     "summary": "",
     "image_keyword": ""
-  },
+  }},
   "topics": [
-    {
+    {{
       "title": "",
       "summary": "",
       "image_keyword": ""
-    }
+    }}
   ],
   "details": [
-    {
+    {{
       "title": "",
       "summary": "",
       "image_keyword": "",
       "source": "",
       "published": ""
-    }
+    }}
   ]
 }
 
-タスク：
-1. 世界の今日のAIニュースを5つの主要トピックに整理してまとめてください。
-2. 世界の今日のAIニュースのうち主要なニュース20件を整理し、各400文字で内容がしっかりわかるようにポイントを書いて
-3. 画像キーワードは英単語で、ニュース内容に関連する単語にしてください。
-4. すべて日本語で書いて
+条件：
+1. main_topic は最も重要なニュース1件
+2. topics は主要ニュース5件
+3. details は詳細ニュース20件
+4. image_keyword は英単語（ai, robotics など）
+5. source は記事のリンク
+6. published は YYYY-MM-DD 形式
+
+以下が今日のニュース一覧です：
+
+{json.dumps(articles, ensure_ascii=False)}
 """
 
 response = client.chat.completions.create(
@@ -54,60 +103,19 @@ json_str = raw[start:end]
 
 data = json.loads(json_str)
 
-# 画像URLを安定生成する関数
+
+# -----------------------------
+# 3. HTML 生成
+# -----------------------------
 def safe_image(keyword):
     return f"https://source.unsplash.com/featured/?{keyword}"
 
-# HTMLテンプレート読み込み
 with open("template.html", "r", encoding="utf-8") as f:
     html = f.read()
 
-# メイントピック埋め込み
+# メイントピック
 main_kw = data["main_topic"]["image_keyword"]
 html = html.replace("{{MAIN_IMAGE}}", safe_image(main_kw))
 html = html.replace("{{MAIN_TITLE}}", data["main_topic"]["title"])
 html = html.replace("{{MAIN_SUMMARY}}", data["main_topic"]["summary"])
 
-# 主要トピックカード生成
-cards = ""
-for t in data["topics"]:
-    kw = t["image_keyword"]
-    img = safe_image(kw)
-    card = f"""
-    <div class="news-card">
-      <img src="{img}" />
-      <div class="news-card-content">
-        <h3>{t['title']}</h3>
-        <p>{t['summary']}</p>
-      </div>
-    </div>
-    """
-    cards += card
-
-html = html.replace("{{NEWS_CARDS}}", cards)
-
-# 詳細ニュース20件生成
-details_html = ""
-for d in data["details"]:
-    kw = d["image_keyword"]
-    img = safe_image(kw)
-    block = f"""
-    <div class="detail-item">
-      <img src="{img}" />
-      <div class="detail-content">
-        <h3>{d['title']}</h3>
-        <p>{d['summary']}</p>
-        <div class="detail-meta">
-          出典: {d['source']} / 公開日: {d['published']}
-        </div>
-      </div>
-    </div>
-    """
-    details_html += block
-
-html = html.replace("{{DETAILS_LIST}}", details_html)
-
-# 出力
-os.makedirs("public", exist_ok=True)
-with open("public/index.html", "w", encoding="utf-8") as f:
-    f.write(html)
