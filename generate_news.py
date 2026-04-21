@@ -12,6 +12,15 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 RSS_URL = "https://rss.msn.com/en-us/technology"
 feed = feedparser.parse(RSS_URL)
 
+print("=== RSS DEBUG ===")
+print("entries count:", len(feed.entries))
+if len(feed.entries) > 0:
+    e = feed.entries[0]
+    print("first entry keys:", e.keys())
+    print("has published_parsed:", hasattr(e, "published_parsed"))
+    print("raw published:", getattr(e, "published", None))
+print("=== RSS DEBUG END ===")
+
 today = datetime.utcnow()
 one_week_ago = today - timedelta(days=7)
 
