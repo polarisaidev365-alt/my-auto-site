@@ -3,8 +3,23 @@ import json
 import feedparser
 from datetime import datetime, timedelta
 from openai import OpenAI
+from urllib.parse import urlparse, parse_qs
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# -----------------------------
+# Google News のリダイレクト URL を実記事 URL に変換
+# -----------------------------
+def extract_real_url(google_news_url):
+    try:
+        parsed = urlparse(google_news_url)
+        qs = parse_qs(parsed.query)
+        if "url" in qs:
+            return qs["url"][0]
+    except:
+        pass
+    return google_news_url  # 変換できなければそのまま
+
 
 # -----------------------------
 # 1. Google News RSS から AI ニュースを取得
@@ -22,7 +37,6 @@ one_week_ago = today - timedelta(days=7)
 
 articles = []
 for entry in feed.entries:
-    # Google News RSS は published_parsed が存在する
     published_dt = None
     if hasattr(entry, "published_parsed") and entry.published_parsed:
         try:
@@ -36,15 +50,24 @@ for entry in feed.entries:
     if published_dt < one_week_ago:
         continue
 
+    real_url = extract_real_url(entry.link)
+
     articles.append({
         "title": entry.title,
         "summary": getattr(entry, "summary", ""),
-        "source": entry.link,
-        "published": published_dt.strftime("%Y-%m-%d")
+        "source": real_url,
+        "published": published_dt.strftime("%Y-%m-%d"),
+        "published_dt": published_dt
     })
 
-# 最大 50 件に制限
-articles = articles[:50]
+# 新しい順に並べ替え
+articles.sort(key=lambda x: x["published_dt"], reverse=True)
+
+# 主要ニュース 5 件
+main_topics = articles[:5]
+
+# 詳細ニュース 20 件
+detail_topics = articles[:20]
 
 # -----------------------------
 # 2. OpenAI に要約させる
@@ -54,17 +77,11 @@ prompt = """
 以下の形式のJSON「のみ」を返してください。説明文や前置きは禁止です。
 
 summary の条件：
-- 主要ニュース：自然な要約（200文字以内）
-- 詳細ニュース：400文字以内で要点をまとめる
+- 主要ニュース：200文字以内
+- 詳細ニュース：400文字以内
 
 JSON形式：
 {
-  "main_topic": {
-    "title": "",
-    "summary": "",
-    "source": "",
-    "published": ""
-  },
   "topics": [
     {
       "title": "",
@@ -84,10 +101,9 @@ JSON形式：
 }
 
 条件：
-- main_topic は今週の最重要ニュース1件
-- topics は今週の主要ニュース5件
-- details は今週の詳細ニュース20件
-- summary は400文字以内（details）
+- topics は主要ニュース5件
+- details は詳細ニュース20件（過去1週間の新しい順）
+- summary は文字数制限を守る
 - 必ず JSON のみを返す
 """
 
@@ -113,7 +129,7 @@ json_str = raw[start:end]
 data = json.loads(json_str)
 
 # -----------------------------
-# 2.5 JSON の壊れを修復
+# JSON の壊れを修復
 # -----------------------------
 def ensure_list(v):
     return v if isinstance(v, list) else [v]
@@ -123,7 +139,7 @@ data["details"] = ensure_list(data.get("details", []))
 
 while len(data["topics"]) < 5:
     data["topics"].append({
-        "title": "追加トピック",
+        "title": "追加主要ニュース",
         "summary": "AI関連の補完ニュースです。",
         "source": "",
         "published": today.strftime("%Y-%m-%d")
@@ -138,17 +154,12 @@ while len(data["details"]) < 20:
     })
 
 # -----------------------------
-# 3. HTML 生成（画像なし）
+# 3. HTML 生成
 # -----------------------------
 with open("template.html", "r", encoding="utf-8") as f:
     html = f.read()
 
-main = data["main_topic"]
-html = html.replace("{{MAIN_TITLE}}", main["title"])
-html = html.replace("{{MAIN_SUMMARY}}", main["summary"])
-html = html.replace("{{MAIN_SOURCE}}", main["source"])
-html = html.replace("{{MAIN_PUBLISHED}}", main["published"])
-
+# 主要ニュースカード
 cards = ""
 for t in data["topics"][:5]:
     cards += f"""
@@ -166,6 +177,7 @@ for t in data["topics"][:5]:
 
 html = html.replace("{{NEWS_CARDS}}", cards)
 
+# 詳細ニュース
 details_html = ""
 for d in data["details"][:20]:
     summary_400 = d["summary"][:400]
