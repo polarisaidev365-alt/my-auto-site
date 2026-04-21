@@ -1,5 +1,6 @@
 import os
 import json
+import requests
 import feedparser
 from datetime import datetime, timedelta
 from openai import OpenAI
@@ -7,53 +8,53 @@ from openai import OpenAI
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # -----------------------------
-# 1. Bing News RSS から「今週のAIニュース」を取得
+# 1. Google News RSS から AI ニュースを取得
 # -----------------------------
-import requests
-import feedparser
-
-RSS_URL = "https://rss.msn.com/en-us/technology"
+RSS_URL = "https://news.google.com/rss/search?q=AI&hl=en-US&gl=US&ceid=US:en"
 
 headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+    "User-Agent": "Mozilla/5.0"
 }
 
 response = requests.get(RSS_URL, headers=headers, timeout=10)
-
 feed = feedparser.parse(response.text)
 
 print("=== RSS DEBUG ===")
-print("status:", response.status_code)
+print("HTTP status:", response.status_code)
 print("entries count:", len(feed.entries))
-if len(feed.entries) > 0:
-    print("first entry keys:", feed.entries[0].keys())
 print("=== RSS DEBUG END ===")
-
 
 today = datetime.utcnow()
 one_week_ago = today - timedelta(days=7)
 
 articles = []
 for entry in feed.entries:
-    try:
-        published = datetime(*entry.published_parsed[:6])
-    except:
-        continue
+    # Google News RSS は published_parsed が存在する
+    published_dt = None
+    if hasattr(entry, "published_parsed") and entry.published_parsed:
+        try:
+            published_dt = datetime(*entry.published_parsed[:6])
+        except:
+            published_dt = None
 
-    if published < one_week_ago:
+    if published_dt is None:
+        published_dt = today
+
+    if published_dt < one_week_ago:
         continue
 
     articles.append({
         "title": entry.title,
-        "summary": entry.summary,
-        "source": entry.link,  # Bing のリンクをそのまま使う
-        "published": published.strftime("%Y-%m-%d")
+        "summary": getattr(entry, "summary", ""),
+        "source": entry.link,
+        "published": published_dt.strftime("%Y-%m-%d")
     })
 
+# 50件に制限
 articles = articles[:50]
 
 # -----------------------------
-# 2. OpenAI に要約させる（主要ニュース + 詳細ニュース）
+# 2. OpenAI に要約させる
 # -----------------------------
 prompt = """
 あなたは厳密なJSON生成AIです。
@@ -107,7 +108,6 @@ response = client.chat.completions.create(
 
 raw = response.choices[0].message.content.strip()
 
-# ★★★ OpenAI の返答を必ずログに出す ★★★
 print("=== OPENAI RAW RESPONSE START ===")
 print(raw)
 print("=== OPENAI RAW RESPONSE END ===")
@@ -128,7 +128,6 @@ def ensure_list(v):
 data["topics"] = ensure_list(data.get("topics", []))
 data["details"] = ensure_list(data.get("details", []))
 
-# topics を 5 件に補完
 while len(data["topics"]) < 5:
     data["topics"].append({
         "title": "追加トピック",
@@ -137,7 +136,6 @@ while len(data["topics"]) < 5:
         "published": today.strftime("%Y-%m-%d")
     })
 
-# details を 20 件に補完
 while len(data["details"]) < 20:
     data["details"].append({
         "title": "追加詳細ニュース",
@@ -158,7 +156,6 @@ html = html.replace("{{MAIN_SUMMARY}}", main["summary"])
 html = html.replace("{{MAIN_SOURCE}}", main["source"])
 html = html.replace("{{MAIN_PUBLISHED}}", main["published"])
 
-# 主要ニュースカード
 cards = ""
 for t in data["topics"][:5]:
     cards += f"""
@@ -176,7 +173,6 @@ for t in data["topics"][:5]:
 
 html = html.replace("{{NEWS_CARDS}}", cards)
 
-# 詳細ニュース表
 details_html = ""
 for d in data["details"][:20]:
     summary_400 = d["summary"][:400]
@@ -191,7 +187,6 @@ for d in data["details"][:20]:
 
 html = html.replace("{{DETAILS_LIST}}", details_html)
 
-# 出力
 os.makedirs("public", exist_ok=True)
 with open("public/index.html", "w", encoding="utf-8") as f:
     f.write(html)
