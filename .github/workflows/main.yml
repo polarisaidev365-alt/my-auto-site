@@ -1,4 +1,4 @@
-name: Daily AI HTML with Image
+name: Daily AI News
 
 on:
   schedule:
@@ -20,27 +20,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Generate index.html
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
         run: |
-          mkdir -p public
-          cat << 'EOF' > public/index.html
-          <!DOCTYPE html>
-          <html lang="ja">
-          <head>
-            <meta charset="UTF-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <title>AI Daily Summary</title>
-          </head>
-          <body>
-            <h1>AI がまとめた今日のトピック</h1>
-            <img src="https://example.com/sample.jpg" style="max-width:100%;height:auto;" />
-            <section>
-              <h2>サマリー</h2>
-              <p>ここに AI が生成した要約テキストを入れる。</p>
-            </section>
-          </body>
-          </html>
-          EOF
+          pip install feedparser
+          pip install openai
+          pip install requests beautifulsoup4
+
+      - name: Run generate_news.py
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python generate_news.py
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
