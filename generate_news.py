@@ -9,17 +9,26 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # -----------------------------
 # 1. Bing News RSS から「今週のAIニュース」を取得
 # -----------------------------
+import requests
+import feedparser
+
 RSS_URL = "https://rss.msn.com/en-us/technology"
-feed = feedparser.parse(RSS_URL)
+
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+}
+
+response = requests.get(RSS_URL, headers=headers, timeout=10)
+
+feed = feedparser.parse(response.text)
 
 print("=== RSS DEBUG ===")
+print("status:", response.status_code)
 print("entries count:", len(feed.entries))
 if len(feed.entries) > 0:
-    e = feed.entries[0]
-    print("first entry keys:", e.keys())
-    print("has published_parsed:", hasattr(e, "published_parsed"))
-    print("raw published:", getattr(e, "published", None))
+    print("first entry keys:", feed.entries[0].keys())
 print("=== RSS DEBUG END ===")
+
 
 today = datetime.utcnow()
 one_week_ago = today - timedelta(days=7)
