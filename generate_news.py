@@ -9,7 +9,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # -----------------------------
 # 1. Bing News RSS から「今週のAIニュース」を取得
 # -----------------------------
-RSS_URL = "https://www.bing.com/news/search?q=AI&format=rss"
+RSS_URL = "https://rss.msn.com/en-us/technology"
 feed = feedparser.parse(RSS_URL)
 
 today = datetime.utcnow()
