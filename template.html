@@ -1,85 +1,109 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>AI News Daily</title>
-<style>
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    background: #f5f5f5;
-}
-header {
-    background: #222;
-    color: white;
-    padding: 20px;
-    text-align: center;
-}
-.container {
-    width: 90%;
-    max-width: 1000px;
-    margin: 20px auto;
-}
-h2 {
-    border-left: 5px solid #333;
-    padding-left: 10px;
-}
-.news-card {
-    background: white;
-    padding: 15px;
-    margin-bottom: 15px;
-    border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-.news-card h3 {
-    margin-top: 0;
-}
-.news-meta {
-    font-size: 12px;
-    color: #666;
-}
-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-}
-table th, table td {
-    border: 1px solid #ddd;
-    padding: 10px;
-}
-table th {
-    background: #eee;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI News Daily</title>
+
+    <style>
+        body {
+            font-family: "Segoe UI", sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f7fa;
+            color: #333;
+        }
+
+        header {
+            background: #1a73e8;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1100px;
+            margin: 30px auto;
+        }
+
+        h2 {
+            border-left: 6px solid #1a73e8;
+            padding-left: 10px;
+            margin-top: 40px;
+            font-size: 24px;
+        }
+
+        /* 主要ニュースカード */
+        .news-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .news-card h3 {
+            margin: 0 0 10px;
+            font-size: 20px;
+        }
+
+        .news-meta {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        /* 詳細ニューステーブル */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            vertical-align: top;
+        }
+
+        th {
+            background: #e8f0fe;
+            font-weight: bold;
+        }
+
+        tr:hover {
+            background: #f1f3f4;
+        }
+
+        a {
+            color: #1a73e8;
+            word-break: break-all;
+        }
+    </style>
 </head>
+
 <body>
 
-<header>
-    <h1>AI News Daily</h1>
-</header>
+<header>AI News Daily</header>
 
 <div class="container">
 
-    <h2>主要ニュース（5件）</h2>
-
-    <div class="main-topic">
-        <h3>{{MAIN_TITLE}}</h3>
-        <p>{{MAIN_SUMMARY}}</p>
-        <p class="news-meta">
-            出典: <a href="{{MAIN_SOURCE}}" target="_blank">{{MAIN_SOURCE}}</a><br>
-            公開日: {{MAIN_PUBLISHED}}
-        </p>
-    </div>
-
-    <h2>その他の主要ニュース</h2>
+    <h2>主要ニュース（Top 5）</h2>
     {{NEWS_CARDS}}
 
-    <h2>詳細ニュース（20件）</h2>
+    <h2>詳細ニュース（過去 1 週間・最新 20 件）</h2>
+
     <table>
         <tr>
             <th>タイトル</th>
-            <th>要約（400文字）</th>
+            <th>要約</th>
             <th>出典</th>
             <th>公開日</th>
         </tr>
