@@ -66,18 +66,23 @@ one_week_ago = today - timedelta(days=7)
 articles = []
 
 for entry in feed.entries:
+    # 日付の取得（published → updated → today）
     published_dt = None
+
     if hasattr(entry, "published_parsed") and entry.published_parsed:
         try:
             published_dt = datetime(*entry.published_parsed[:6])
         except:
             published_dt = None
 
+    if published_dt is None and hasattr(entry, "updated_parsed") and entry.updated_parsed:
+        try:
+            published_dt = datetime(*entry.updated_parsed[:6])
+        except:
+            published_dt = None
+
     if published_dt is None:
         published_dt = today
-
-    if published_dt < one_week_ago:
-        continue
 
     # Google News → 実記事 URL に変換
     real_url = extract_real_url(entry.link)
@@ -96,7 +101,13 @@ for entry in feed.entries:
 # -----------------------------
 articles.sort(key=lambda x: x["published_dt"], reverse=True)
 
-# JSON 化前に datetime を削除
+# -----------------------------
+# 20 件確保（足りない場合は古い記事も含める）
+# -----------------------------
+if len(articles) < 20:
+    print("記事が20件未満のため、フィルタを緩めます。")
+
+# datetime を削除
 for a in articles:
     if "published_dt" in a:
         del a["published_dt"]
@@ -109,7 +120,7 @@ detail_topics = articles[:20]
 
 
 # -----------------------------
-# 2. OpenAI に要約させる（日本語タイトルに変更）
+# 2. OpenAI に要約させる（URL は渡さない）
 # -----------------------------
 prompt = """
 あなたは厳密なJSON生成AIです。
@@ -125,7 +136,6 @@ JSON形式：
     {
       "title": "（日本語タイトル）",
       "summary": "",
-      "source": "",
       "published": ""
     }
   ],
@@ -133,7 +143,6 @@ JSON形式：
     {
       "title": "（日本語タイトル）",
       "summary": "",
-      "source": "",
       "published": ""
     }
   ]
@@ -144,12 +153,18 @@ JSON形式：
 - details は詳細ニュース20件（過去1週間の新しい順）
 - summary は文字数制限を守る
 - タイトルは必ず日本語にする
-- URL は書き換えず、入力された URL をそのまま返す
+- URL は返さない（後で付ける）
 - 必ず JSON のみを返す
 """
 
+# URL を渡さない articles を作成
+articles_no_url = [
+    {"title": a["title"], "summary": a["summary"], "published": a["published"]}
+    for a in articles
+]
+
 prompt += "\n\n今週のニュース一覧：\n"
-prompt += json.dumps(articles, ensure_ascii=False)
+prompt += json.dumps(articles_no_url, ensure_ascii=False)
 
 response = client.chat.completions.create(
     model="gpt-4o-mini",
@@ -170,43 +185,13 @@ json_str = raw[start:end]
 data = json.loads(json_str)
 
 # -----------------------------
-# JSON 修復
+# URL を index で再セット（タイトル一致ではなく順番で対応）
 # -----------------------------
-def ensure_list(v):
-    return v if isinstance(v, list) else [v]
+for i, t in enumerate(data["topics"]):
+    t["source"] = main_topics[i]["source"]
 
-data["topics"] = ensure_list(data.get("topics", []))
-data["details"] = ensure_list(data.get("details", []))
-
-# -----------------------------
-# URL を OpenAI の出力からではなく、元の articles から再セット
-# -----------------------------
-title_to_url = {a["title"]: a["source"] for a in articles}
-
-def fix_url(item):
-    if item["title"] in title_to_url:
-        item["source"] = title_to_url[item["title"]]
-    return item
-
-data["topics"] = [fix_url(t) for t in data["topics"]]
-data["details"] = [fix_url(d) for d in data["details"]]
-
-# 不足分補完
-while len(data["topics"]) < 5:
-    data["topics"].append({
-        "title": "追加主要ニュース",
-        "summary": "AI関連の補完ニュースです。",
-        "source": "",
-        "published": today.strftime("%Y-%m-%d")
-    })
-
-while len(data["details"]) < 20:
-    data["details"].append({
-        "title": "追加詳細ニュース",
-        "summary": "AI関連の補完ニュースです。（400文字要点）",
-        "source": "",
-        "published": today.strftime("%Y-%m-%d")
-    })
+for i, d in enumerate(data["details"]):
+    d["source"] = detail_topics[i]["source"]
 
 
 # -----------------------------
