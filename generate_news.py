@@ -18,7 +18,7 @@ def extract_real_url(google_news_url):
             return qs["url"][0]
     except:
         pass
-    return google_news_url  # 変換できなければそのまま
+    return google_news_url
 
 
 # -----------------------------
@@ -36,6 +36,7 @@ today = datetime.utcnow()
 one_week_ago = today - timedelta(days=7)
 
 articles = []
+
 for entry in feed.entries:
     published_dt = None
     if hasattr(entry, "published_parsed") and entry.published_parsed:
@@ -60,8 +61,17 @@ for entry in feed.entries:
         "published_dt": published_dt
     })
 
+# -----------------------------
 # 新しい順に並べ替え
+# -----------------------------
 articles.sort(key=lambda x: x["published_dt"], reverse=True)
+
+# -----------------------------
+# JSON 化前に datetime を削除（今回のエラー原因）
+# -----------------------------
+for a in articles:
+    if "published_dt" in a:
+        del a["published_dt"]
 
 # 主要ニュース 5 件
 main_topics = articles[:5]
@@ -69,12 +79,13 @@ main_topics = articles[:5]
 # 詳細ニュース 20 件
 detail_topics = articles[:20]
 
+
 # -----------------------------
 # 2. OpenAI に要約させる
 # -----------------------------
 prompt = """
 あなたは厳密なJSON生成AIです。
-以下の形式のJSON「のみ」を返してください。説明文や前置きは禁止です。
+以下の形式のJSON「のみ」を返してください。説明文は禁止です。
 
 summary の条件：
 - 主要ニュース：200文字以内
@@ -129,7 +140,7 @@ json_str = raw[start:end]
 data = json.loads(json_str)
 
 # -----------------------------
-# JSON の壊れを修復
+# JSON 修復
 # -----------------------------
 def ensure_list(v):
     return v if isinstance(v, list) else [v]
@@ -152,6 +163,7 @@ while len(data["details"]) < 20:
         "source": "",
         "published": today.strftime("%Y-%m-%d")
     })
+
 
 # -----------------------------
 # 3. HTML 生成
