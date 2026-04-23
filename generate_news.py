@@ -14,7 +14,6 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # -----------------------------
 def resolve_final_url(url):
     try:
-        # クエリパラメータを削除（?ocid=... など）
         parsed = urlparse(url)
         clean_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
 
@@ -23,12 +22,10 @@ def resolve_final_url(url):
 
         soup = BeautifulSoup(r.text, "html.parser")
 
-        # og:url（最優先）
         og = soup.find("meta", property="og:url")
         if og and og.get("content"):
             return og["content"]
 
-        # canonical
         canonical = soup.find("link", rel="canonical")
         if canonical and canonical.get("href"):
             return canonical["href"]
@@ -50,7 +47,7 @@ def build_rss_url(query: str) -> str:
 
 today = datetime.utcnow()
 articles = []
-seen = set()  # 重複排除
+seen = set()
 
 for q in QUERIES:
     rss_url = build_rss_url(q)
@@ -61,7 +58,6 @@ for q in QUERIES:
     print("=== RSS DEBUG END ===")
 
     for entry in feed.entries:
-        # 日付の取得
         published_dt = None
 
         if hasattr(entry, "published_parsed") and entry.published_parsed:
@@ -79,10 +75,8 @@ for q in QUERIES:
         if published_dt is None:
             published_dt = today
 
-        # 実記事 URL を取得
         real_url = resolve_final_url(entry.link)
 
-        # 重複排除（タイトル + URL）
         key = (entry.title, real_url)
         if key in seen:
             continue
@@ -104,11 +98,9 @@ articles.sort(key=lambda x: x["published_dt"], reverse=True)
 for a in articles:
     del a["published_dt"]
 
-# 主要ニュース 5 件（足りなければあるだけ）
 main_topics = articles[:5]
+detail_topics = articles[:20]  # 実記事のみ
 
-# 詳細ニュース 最大 20 件（実記事のみ）
-detail_topics = articles[:20]
 
 # -----------------------------
 # OpenAI に要約させる（URL は渡さない）
@@ -125,14 +117,14 @@ JSON形式：
 {
   "topics": [
     {
-      "title": "（日本語タイトル）",
+      "title": "",
       "summary": "",
       "published": ""
     }
   ],
   "details": [
     {
-      "title": "（日本語タイトル）",
+      "title": "",
       "summary": "",
       "published": ""
     }
@@ -140,8 +132,9 @@ JSON形式：
 }
 
 条件：
-- topics は主要ニュース5件（足りない場合はある分だけでよい）
-- details は詳細ニュース20件（足りない場合はある分だけでよい）
+- topics は主要ニュース5件「ちょうど5件」
+- details は詳細ニュース20件「ちょうど20件」
+- topics と details は必ず別のニュースにする（重複禁止）
 - summary は文字数制限を守る
 - タイトルは必ず日本語にする
 - URL は返さない（後で付ける）
@@ -180,32 +173,23 @@ data["topics"] = ensure_list(data.get("topics", []))
 data["details"] = ensure_list(data.get("details", []))
 
 # -----------------------------
-# URL を index で再セット（OpenAI の URL は信用しない）
+# URL を index で再セット
 # -----------------------------
-# topics
 for i, t in enumerate(data["topics"]):
     if i < len(main_topics):
         t["source"] = main_topics[i]["source"]
         if not t.get("published"):
             t["published"] = main_topics[i]["published"]
-    else:
-        t["source"] = ""
-        if not t.get("published"):
-            t["published"] = today.strftime("%Y-%m-%d")
 
-# details（実記事だけ・最大20件）
 for i, d in enumerate(data["details"]):
     if i < len(detail_topics):
         d["source"] = detail_topics[i]["source"]
         if not d.get("published"):
             d["published"] = detail_topics[i]["published"]
-    else:
-        d["source"] = ""
-        if not d.get("published"):
-            d["published"] = today.strftime("%Y-%m-%d")
 
-# OpenAI が20件以上返しても、実記事は detail_topics の数までに制限
+# details は実記事の数に合わせて切る
 data["details"] = data["details"][:len(detail_topics)]
+
 
 # -----------------------------
 # HTML 生成
@@ -213,7 +197,6 @@ data["details"] = data["details"][:len(detail_topics)]
 with open("template.html", "r", encoding="utf-8") as f:
     html = f.read()
 
-# 主要ニュースカード（リンク文字列は「リンク」）
 cards = ""
 for i, t in enumerate(data["topics"][:len(main_topics)]):
     cards += f"""
@@ -231,7 +214,6 @@ for i, t in enumerate(data["topics"][:len(main_topics)]):
 
 html = html.replace("{{NEWS_CARDS}}", cards)
 
-# 詳細ニュース（リンク文字列は「リンク」）
 details_html = ""
 for d in data["details"]:
     summary_400 = d["summary"][:400]
