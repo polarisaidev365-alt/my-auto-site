@@ -5,40 +5,30 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from openai import OpenAI
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, urlunparse
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # -----------------------------
-# Google News のリダイレクト URL を実記事 URL に変換
-# -----------------------------
-def extract_real_url(google_news_url):
-    try:
-        parsed = urlparse(google_news_url)
-        qs = parse_qs(parsed.query)
-        if "url" in qs:
-            return qs["url"][0]
-    except:
-        pass
-    return google_news_url
-
-
-# -----------------------------
-# Google News 内部リンク → 実記事 URL を取得（GET）
+# MSN / Bing の中間ページ → 実記事 URL を取得
 # -----------------------------
 def resolve_final_url(url):
     try:
+        # クエリパラメータを削除（?ocid=xxx など）
+        parsed = urlparse(url)
+        clean_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
+
         headers = {"User-Agent": "Mozilla/5.0"}
-        r = requests.get(url, headers=headers, timeout=10)
+        r = requests.get(clean_url, headers=headers, timeout=10)
 
         soup = BeautifulSoup(r.text, "html.parser")
 
-        # og:url を探す（最優先）
+        # og:url（最優先）
         og = soup.find("meta", property="og:url")
         if og and og.get("content"):
             return og["content"]
 
-        # canonical を探す
+        # canonical
         canonical = soup.find("link", rel="canonical")
         if canonical and canonical.get("href"):
             return canonical["href"]
@@ -46,13 +36,13 @@ def resolve_final_url(url):
     except Exception as e:
         print("URL resolve error:", e)
 
-    return url  # 取得できなければ元の URL を返す
+    return url  # 取得できなければ元の URL
 
 
 # -----------------------------
-# 1. Google News RSS から AI ニュースを取得
+# 1. Bing News RSS から AI ニュースを取得
 # -----------------------------
-RSS_URL = "https://news.google.com/rss/search?q=AI&hl=ja&gl=JP&ceid=JP:ja"
+RSS_URL = "https://www.bing.com/news/search?q=AI&format=rss&cc=JP&setlang=ja-jp"
 
 feed = feedparser.parse(RSS_URL)
 
@@ -64,6 +54,7 @@ today = datetime.utcnow()
 one_week_ago = today - timedelta(days=7)
 
 articles = []
+seen = set()  # 重複排除
 
 for entry in feed.entries:
     # 日付の取得（published → updated → today）
@@ -84,9 +75,17 @@ for entry in feed.entries:
     if published_dt is None:
         published_dt = today
 
-    # Google News → 実記事 URL に変換
-    real_url = extract_real_url(entry.link)
-    real_url = resolve_final_url(real_url)
+    # Bing RSS の URL（MSN の中間ページ）
+    raw_url = entry.link
+
+    # 実記事 URL に変換
+    real_url = resolve_final_url(raw_url)
+
+    # 重複排除（タイトル + URL）
+    key = entry.title + real_url
+    if key in seen:
+        continue
+    seen.add(key)
 
     articles.append({
         "title": entry.title,
@@ -101,21 +100,12 @@ for entry in feed.entries:
 # -----------------------------
 articles.sort(key=lambda x: x["published_dt"], reverse=True)
 
-# -----------------------------
-# 20 件確保（足りない場合は古い記事も含める）
-# -----------------------------
-if len(articles) < 20:
-    print("記事が20件未満のため、フィルタを緩めます。")
-
 # datetime を削除
 for a in articles:
-    if "published_dt" in a:
-        del a["published_dt"]
+    del a["published_dt"]
 
-# 主要ニュース 5 件
+# 20 件確保（足りない場合はそのまま）
 main_topics = articles[:5]
-
-# 詳細ニュース 20 件
 detail_topics = articles[:20]
 
 
@@ -150,14 +140,13 @@ JSON形式：
 
 条件：
 - topics は主要ニュース5件
-- details は詳細ニュース20件（過去1週間の新しい順）
+- details は詳細ニュース20件
 - summary は文字数制限を守る
 - タイトルは必ず日本語にする
 - URL は返さない（後で付ける）
 - 必ず JSON のみを返す
 """
 
-# URL を渡さない articles を作成
 articles_no_url = [
     {"title": a["title"], "summary": a["summary"], "published": a["published"]}
     for a in articles
@@ -185,7 +174,7 @@ json_str = raw[start:end]
 data = json.loads(json_str)
 
 # -----------------------------
-# URL を index で再セット（タイトル一致ではなく順番で対応）
+# URL を index で再セット（OpenAI の URL は信用しない）
 # -----------------------------
 for i, t in enumerate(data["topics"]):
     t["source"] = main_topics[i]["source"]
