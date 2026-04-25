@@ -190,6 +190,53 @@ for i, d in enumerate(data["details"]):
 # details は実記事の数に合わせて切る
 data["details"] = data["details"][:len(detail_topics)]
 
+# -----------------------------
+# 楽天関連商品自動生成（AI × 楽天検索リンク）
+# -----------------------------
+
+def generate_rakuten_search_link(keyword):
+    """楽天検索リンクを生成（あなたのA8 ID入り）"""
+    base = "https://search.rakuten.co.jp/search/mall/"
+    encoded = urllib.parse.quote(keyword)
+    return f"{base}{encoded}/?scid=af_pc_etc&aid=a26042506136"
+
+
+def generate_related_products(news_title, summary):
+    """AIに関連商品名を3つ生成させ、楽天検索リンクに変換"""
+    prompt = f"""
+以下のニュース内容に関連する商品を3つ提案してください。
+商品名のみを箇条書きで返してください。
+
+ニュースタイトル: {news_title}
+概要: {summary}
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    raw_text = response.choices[0].message.content.strip()
+    product_names = [p.replace("-", "").strip() for p in raw_text.split("\n") if p.strip()]
+
+    # 楽天検索リンクに変換
+    product_links = []
+    for name in product_names:
+        link = generate_rakuten_search_link(name)
+        product_links.append((name, link))
+
+    return product_links
+
+
+def build_related_products_html(product_links):
+    """関連商品HTMLを生成"""
+    html = '<div class="affiliate-box"><h3>関連商品（楽天）</h3><ul>'
+    for name, link in product_links:
+        html += f'<li><a href="{link}" target="_blank">{name}</a></li>'
+    html += '</ul></div>'
+    return html
+
+
 
 # -----------------------------
 # HTML 生成
