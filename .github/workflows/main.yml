@@ -2,7 +2,7 @@ name: Build and Deploy
 
 on:
   schedule:
-    - cron: "0 * * * *"   # 毎時実行
+    - cron: "0 * * * *"
   workflow_dispatch:
 
 jobs:
