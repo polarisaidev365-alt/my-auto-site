@@ -228,6 +228,17 @@ for d in data["details"]:
 
 html = html.replace("{{DETAILS_LIST}}", details_html)
 
+# 楽天バナー（234x60）をテーブル下に挿入
+rakuten_banner = """
+<div style="margin: 20px 0; text-align: center;">
+<a href="https://rpx.a8.net/svt/ejp?a8mat=4B1THV+7Q1GAA+2HOM+6TMLD&rakuten=y&a8ejpredirect=http%3A%2F%2Fhb.afl.rakuten.co.jp%2Fhgc%2F0eac8dc2.9a477d4e.0eac8dc3.0aa56a48%2Fa26042506136_4B1THV_7Q1GAA_2HOM_6TMLD%3Fpc%3Dhttp%253A%252F%252Fbooks.rakuten.co.jp%252F%26m%3Dhttp%253A%252F%252Fbooks.rakuten.co.jp%252F" rel="nofollow">
+<img src="http://hbb.afl.rakuten.co.jp/hsb/0eb46e44.85d79ba9.0eb46e39.39a610d9/" border="0"></a>
+<img border="0" width="1" height="1" src="https://www19.a8.net/0.gif?a8mat=4B1THV+7Q1GAA+2HOM+6TMLD" alt="">
+</div>
+"""
+
+html = html.replace("{{RAKUTEN_BANNER}}", rakuten_banner)
+
 os.makedirs("public", exist_ok=True)
 with open("public/index.html", "w", encoding="utf-8") as f:
     f.write(html)
