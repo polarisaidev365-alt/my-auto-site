@@ -2,11 +2,11 @@ name: Build and Deploy
 
 on:
   schedule:
-    - cron: "0 * * * *"   # 毎時実行（必要に応じて変更）
+    - cron: "0 * * * *"   # 毎時実行（必要なら変更）
   workflow_dispatch:
 
 jobs:
-  build-news:
+  build-all:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -25,33 +25,12 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python generate_news.py
 
-      - name: Deploy News
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          branch: gh-pages
-          folder: public
-
-  build-youtube:
-    runs-on: ubuntu-latest
-    needs: build-news
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        run: |
-          pip install requests
-
       - name: Generate YouTube Ranking
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: python generate_youtube.py
 
-      - name: Deploy YouTube
+      - name: Deploy All
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
