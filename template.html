@@ -4,115 +4,96 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI News Daily</title>
-
     <style>
         body {
-            font-family: "Segoe UI", sans-serif;
+            font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background: #f5f7fa;
-            color: #333;
+            background-color: #f4f4f4;
         }
-
         header {
-            background: #1a73e8;
-            color: white;
+            background-color: #222;
+            color: #fff;
             padding: 20px;
             text-align: center;
-            font-size: 28px;
-            font-weight: bold;
         }
-
-        .container {
+        .news-container {
             width: 90%;
-            max-width: 1100px;
-            margin: 30px auto;
+            max-width: 1000px;
+            margin: 20px auto;
         }
-
-        h2 {
-            border-left: 6px solid #1a73e8;
-            padding-left: 10px;
-            margin-top: 40px;
-            font-size: 24px;
-        }
-
-        /* 主要ニュースカード */
         .news-card {
-            background: white;
-            border-radius: 10px;
+            background: #fff;
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-
         .news-card h3 {
-            margin: 0 0 10px;
-            font-size: 20px;
+            margin-top: 0;
         }
-
         .news-meta {
-            font-size: 14px;
-            color: #666;
+            font-size: 12px;
+            color: #555;
             margin-top: 10px;
         }
-
-        /* 詳細ニューステーブル */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            background: #fff;
+            margin-top: 30px;
         }
-
-        th, td {
-            padding: 12px;
-            border-bottom: 1px solid #ddd;
-            vertical-align: top;
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 10px;
         }
-
-        th {
-            background: #e8f0fe;
-            font-weight: bold;
+        table th {
+            background: #eee;
         }
-
-        tr:hover {
-            background: #f1f3f4;
-        }
-
-        a {
-            color: #1a73e8;
-            word-break: break-all;
+        footer {
+            text-align: center;
+            padding: 20px;
+            background: #222;
+            color: #fff;
+            margin-top: 40px;
         }
     </style>
 </head>
-
 <body>
 
-<header>AI News Daily</header>
+<header>
+    <h1>AI News Daily</h1>
+</header>
 
-<div class="container">
+<div class="news-container">
 
-    <h2>主要ニュース（Top 5）</h2>
+    <!-- 主要ニュースカード -->
     {{NEWS_CARDS}}
 
-    <h2>詳細ニュース（過去 1 週間・最新 20 件）</h2>
-
+    <!-- 詳細ニュース一覧 -->
+    <h2>詳細ニュース一覧</h2>
     <table>
-        <tr>
-            <th>タイトル</th>
-            <th>要約</th>
-            <th>出典</th>
-            <th>公開日</th>
-        </tr>
-        {{DETAILS_LIST}}
-        {{RAKUTEN_BANNER}}
-
+        <thead>
+            <tr>
+                <th>タイトル</th>
+                <th>概要</th>
+                <th>リンク</th>
+                <th>公開日</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{DETAILS_LIST}}
+        </tbody>
     </table>
 
+    <!-- ★ ここに楽天バナーを挿入 ★ -->
+    {{RAKUTEN_BANNER}}
+
 </div>
+
+<footer>
+    <p>© 2026 AI News Daily</p>
+</footer>
 
 </body>
 </html>
