@@ -2,23 +2,33 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>AI系YouTube人気ランキング</title>
+<title>AIニュース（毎日自動更新）</title>
 <style>
 body { font-family: Arial; margin: 20px; }
-.yt-card { margin-bottom: 40px; padding: 20px; border: 1px solid #ccc; }
-.affiliate-box { margin-top: 10px; }
-h2 { margin-top: 50px; }
+.news-card { margin-bottom: 40px; padding: 20px; border: 1px solid #ccc; }
+.news-meta { font-size: 12px; color: #555; margin-top: 10px; }
+table { width: 100%; border-collapse: collapse; margin-top: 40px; }
+th, td { border: 1px solid #ccc; padding: 10px; vertical-align: top; }
+th { background: #f0f0f0; }
 </style>
 </head>
 <body>
 
-<h1>AI系YouTube人気ランキング（毎日自動更新）</h1>
+<h1>AIニュース（毎日自動更新）</h1>
 
-<h2>AIツールの使い方・チュートリアル（10件）</h2>
-{{A_SECTION}}
+<h2>主要ニュース（5件）</h2>
+{{NEWS_CARDS}}
 
-<h2>AIニュース・技術解説（10件）</h2>
-{{B_SECTION}}
+<h2>詳細ニュース（20件）</h2>
+<table>
+  <tr>
+    <th>タイトル</th>
+    <th>概要</th>
+    <th>リンク</th>
+    <th>公開日</th>
+  </tr>
+  {{DETAILS_LIST}}
+</table>
 
 </body>
 </html>
