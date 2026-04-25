@@ -103,7 +103,7 @@ detail_topics = articles[:20]  # 実記事のみ
 
 
 # -----------------------------
-# OpenAI に要約させる（URL は渡さない）
+# OpenAI に要約させる
 # -----------------------------
 prompt = """
 あなたは厳密なJSON生成AIです。
@@ -187,49 +187,33 @@ for i, d in enumerate(data["details"]):
         if not d.get("published"):
             d["published"] = detail_topics[i]["published"]
 
-# details は実記事の数に合わせて切る
 data["details"] = data["details"][:len(detail_topics)]
 
 # -----------------------------
-# 楽天関連商品自動生成（AI × 楽天検索リンク）
+# 楽天関連商品自動生成
 # -----------------------------
-
 def generate_rakuten_search_link(keyword):
-    """楽天検索リンクを生成（あなたのA8 ID入り）"""
     base = "https://search.rakuten.co.jp/search/mall/"
-    encoded = urllib.parse.quote(keyword)
+    encoded = quote(keyword)
     return f"{base}{encoded}/?scid=af_pc_etc&aid=a26042506136"
 
-
-def generate_related_products(news_title, summary):
-    """AIに関連商品名を3つ生成させ、楽天検索リンクに変換"""
+def generate_related_products(title, summary):
     prompt = f"""
 以下のニュース内容に関連する商品を3つ提案してください。
 商品名のみを箇条書きで返してください。
 
-ニュースタイトル: {news_title}
+ニュースタイトル: {title}
 概要: {summary}
 """
-
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}]
     )
-
     raw_text = response.choices[0].message.content.strip()
-    product_names = [p.replace("-", "").strip() for p in raw_text.split("\n") if p.strip()]
-
-    # 楽天検索リンクに変換
-    product_links = []
-    for name in product_names:
-        link = generate_rakuten_search_link(name)
-        product_links.append((name, link))
-
-    return product_links
-
+    names = [p.replace("-", "").strip() for p in raw_text.split("\n") if p.strip()]
+    return [(name, generate_rakuten_search_link(name)) for name in names]
 
 def build_related_products_html(product_links):
-    """関連商品HTMLを生成"""
     html = '<div class="affiliate-box"><h3>関連商品（楽天）</h3><ul>'
     for name, link in product_links:
         html += f'<li><a href="{link}" target="_blank">{name}</a></li>'
@@ -237,30 +221,27 @@ def build_related_products_html(product_links):
     return html
 
 
-
 # -----------------------------
 # HTML 生成
 # -----------------------------
 with open("template.html", "r", encoding="utf-8") as f:
-    html = f.read()
+    template = f.read()
 
-cards = ""
-for i, t in enumerate(data["topics"][:len(main_topics)]):
-    cards += f"""
+# 主要ニュースカード
+news_cards_html = ""
+for t in data["topics"]:
+    news_cards_html += f"""
     <div class="news-card">
-      <div class="news-card-content">
-        <h3>{t['title']}</h3>
-        <p>{t['summary']}</p>
-        <div class="news-meta">
-          出典: <a href="{t['source']}" target="_blank">リンク</a><br>
-          公開日: {t['published']}
-        </div>
+      <h3>{t['title']}</h3>
+      <p>{t['summary']}</p>
+      <div class="news-meta">
+        出典: <a href="{t['source']}" target="_blank">リンク</a><br>
+        公開日: {t['published']}
       </div>
     </div>
     """
 
-html = html.replace("{{NEWS_CARDS}}", cards)
-
+# 詳細ニュース
 details_html = ""
 for d in data["details"]:
     summary_400 = d["summary"][:400]
@@ -273,21 +254,18 @@ for d in data["details"]:
     </tr>
     """
 
-html = html.replace("{{DETAILS_LIST}}", details_html)
-
+# HTML 置換
 html = template
 html = html.replace("{{NEWS_CARDS}}", news_cards_html)
 html = html.replace("{{DETAILS_LIST}}", details_html)
 
-# 関連商品を生成
-related_products = generate_related_products(title, summary)
+# 関連商品（楽天）
+first_topic = data["topics"][0]
+related_products = generate_related_products(first_topic["title"], first_topic["summary"])
 related_products_html = build_related_products_html(related_products)
-
-# HTMLに埋め込む
 html = html.replace("{{RELATED_PRODUCTS}}", related_products_html)
 
-
-# 楽天バナー（234x60）をテーブル下に挿入
+# 楽天バナー
 rakuten_banner = """
 <div style="margin: 20px 0; text-align: center;">
 <a href="https://rpx.a8.net/svt/ejp?a8mat=4B1THV+7Q1GAA+2HOM+6TMLD&rakuten=y&a8ejpredirect=http%3A%2F%2Fhb.afl.rakuten.co.jp%2Fhgc%2F0eac8dc2.9a477d4e.0eac8dc3.0aa56a48%2Fa26042506136_4B1THV_7Q1GAA_2HOM_6TMLD%3Fpc%3Dhttp%253A%252F%252Fbooks.rakuten.co.jp%252F%26m%3Dhttp%253A%252F%252Fbooks.rakuten.co.jp%252F" rel="nofollow">
@@ -295,9 +273,9 @@ rakuten_banner = """
 <img border="0" width="1" height="1" src="https://www19.a8.net/0.gif?a8mat=4B1THV+7Q1GAA+2HOM+6TMLD" alt="">
 </div>
 """
-
 html = html.replace("{{RAKUTEN_BANNER}}", rakuten_banner)
 
+# 出力
 os.makedirs("public", exist_ok=True)
 with open("public/index.html", "w", encoding="utf-8") as f:
     f.write(html)
