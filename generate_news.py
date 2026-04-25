@@ -177,7 +177,7 @@ data["topics"] = ensure_list(data.get("topics", []))
 data["details"] = ensure_list(data.get("details", []))
 
 # -----------------------------
-# OpenAI の published を信用せず RSS の日付を必ず使う
+# ★ 未来日付バグ完全修正：OpenAI の published を信用しない
 # -----------------------------
 for i, t in enumerate(data["topics"]):
     if i < len(main_topics):
