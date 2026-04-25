@@ -275,6 +275,18 @@ for d in data["details"]:
 
 html = html.replace("{{DETAILS_LIST}}", details_html)
 
+html = template
+html = html.replace("{{NEWS_CARDS}}", news_cards_html)
+html = html.replace("{{DETAILS_LIST}}", details_html)
+
+# 関連商品を生成
+related_products = generate_related_products(title, summary)
+related_products_html = build_related_products_html(related_products)
+
+# HTMLに埋め込む
+html = html.replace("{{RELATED_PRODUCTS}}", related_products_html)
+
+
 # 楽天バナー（234x60）をテーブル下に挿入
 rakuten_banner = """
 <div style="margin: 20px 0; text-align: center;">
