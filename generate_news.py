@@ -177,17 +177,17 @@ data["topics"] = ensure_list(data.get("topics", []))
 data["details"] = ensure_list(data.get("details", []))
 
 # -----------------------------
-# URL を index で再セット（source が無くてもOK）
+# OpenAI の published を信用せず RSS の日付を必ず使う
 # -----------------------------
 for i, t in enumerate(data["topics"]):
     if i < len(main_topics):
         t["source"] = main_topics[i].get("source")
-        t["published"] = t.get("published") or main_topics[i]["published"]
+        t["published"] = main_topics[i]["published"]
 
 for i, d in enumerate(data["details"]):
     if i < len(detail_topics):
         d["source"] = detail_topics[i].get("source")
-        d["published"] = d.get("published") or detail_topics[i]["published"]
+        d["published"] = detail_topics[i]["published"]
 
 data["topics"] = data["topics"][:5]
 data["details"] = data["details"][:20]
